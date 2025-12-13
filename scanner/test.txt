@@ -1,0 +1,26 @@
+programme exemple;
+constante PI = 3.14;
+variable x1, y2 : entier;
+variable z3a : reel;
+debut
+    x1 := 5;
+    si x1 > 0 alors
+        y2 := x1 + 10
+    sinon
+        y2 := 0
+    fin;
+    tantque x1 < 100 faire
+        x1 := x1 div 2
+        
+    fin;
+    repeter
+        y2 := y2 - 1
+    jusqu'a y2 <= 0;
+    pour i allant de 1 a 10 pas 2 faire
+        z3a := z3a mod 3
+    fin
+    et 
+    ou
+    a
+    pas
+fin.
