@@ -1,0 +1,35 @@
+3. Definition of the grammar of the MiniPascal-Fr language.
+<ProgrammePascal>::= programme <NomProgramme> ; <Corps> .
+<Corps>::=[<PartieDéfinitionConstante>][<PartieDéfinitionVariable>] <InstrComp>
+<PartieDéfinitionConstante>::=constante<DéfinitionConstante>{<DéfinitionConstante>}
+<DéfinitionConstante> ::=<NomConstante>=<Constante> ;
+<PartieDéfinitionVariable>::= variable<DéfinitionVariable>{<DéfinitionVariable>}
+<DéfinitionVariable> ::=<GroupeVariable> ;
+<GroupeVariable> ::=<NomVariable>{, <NomVariable>} : <NomType>
+<NomVariable> ::=<Nom>
+<Nom> ::= <lettre><chiffre>{<lettre>/<chiffre>}
+<Lettre> ::= ‘’A’’/ ‘’B’’/…./ ‘’Z’’/’’a’’/…/’’z’’
+<Chiffre> ::=0/1/…./9
+<NomType> ::=entier/ reel
+<NomConstante>::=<Nom>
+<Constante>::= <Nombre>/<NomConstante>
+<NomProgramme>::= <Nom>
+<Nombre> ::=<Chiffre> {<Chiffre>}/<Chiffre><Chiffre> {<Chiffre>}.<Chiffre>{<Chiffre>}
+<InstrComp> ::=debut <Instruction>{ ; <Instruction>} fin
+<Instruction> ::= <InstructionAffectation> / <InstructionSi> / <InstructionTantque>/
+ <InstructionRépéter>/<InstrComp> /<InstructionPour> /<Vide>
+<InstructionAffectation> ::=<NomVariable> := <Expression>
+<Expression> ::= <ExpressionSimple>[<OperateurRelationnel><ExpressionSimple>]
+<OperateurRelationnel> ::= </ >/ =/ <=/ >=/ <>
+<ExpressionSimple> ::= [<OperateurSigne>]<Terme>{<OperateurAddition><Terme>}
+<OperateurSigne> ::= +/-
+<OperateurAddition> ::= +/-/ou
+<Terme> ::=<Facteur>{<OperateurMult><Facteur>}
+<OperateurMult> ::=* / div / mod / et
+<Facteur> ::=<Constante>/<NomVariable>/(<Expression>)
+<InstructionSi> ::=si <Expression> alors <Instruction> [sinon <Instruction>]
+<InstructionTantque> ::=tantque <Expression> faire <Instruction>
+<InstructionRépéter> ::= repeter <Instruction> jusqu’a <Expression>
+<InstructionPour> ::= pour <NomVariable> allant de <Constante> a <Constante> [pas
+<Constante>] faire <Instruction>
+<Vide> ::= ‘’
