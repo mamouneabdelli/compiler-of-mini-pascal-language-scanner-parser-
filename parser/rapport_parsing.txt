@@ -1,0 +1,21 @@
+════════════════════════════════════════════════════════════
+          RAPPORT D'ANALYSE SYNTAXIQUE
+════════════════════════════════════════════════════════════
+
+✗ RÉSULTAT: ANALYSE ÉCHOUÉE
+
+Nombre d'erreurs détectées: 2
+
+ERREURS DÉTECTÉES:
+------------------------------------------------------------
+
+1. Erreur de syntaxe à la position 1: Type attendu: IDENT, trouvé: SEPARATEUR
+Token actuel: ; (SEPARATEUR)
+
+2. Erreur de syntaxe à la position 1: Identifiant du programme attendu
+Token actuel: ; (SEPARATEUR)
+
+════════════════════════════════════════════════════════════
+Tokens analysés: 82
+Position finale: 1
+════════════════════════════════════════════════════════════
