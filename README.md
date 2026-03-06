@@ -175,11 +175,7 @@ pip install rich
 
 pip install PyQt5
 ```
-# UI code editor:
-![UI_consele](consele.png)
-![parser](parser.png)
-![table_symble](syble_table.png)
-![token](token.png)
+
 
 
 
