@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MP-FR Compiler — Concepts Guide</title>
+<style>
+  :root{
+    --bg:#0b0d10;
+    --surface:#15181c;
+    --surface-2:#1c2026;
+    --border:#262b31;
+    --text:#e8e6e1;
+    --muted:#8d9299;
+    --accent:#ff7a30;
+    --accent-soft:rgba(255,122,48,.14);
+    --kw:#ff9d5c;
+    --ident:#6ee7d6;
+    --num:#f0c674;
+    --op:#f487b6;
+    --punc:#9aa3ad;
+    --str:#a3e6a3;
+    --font-display:'JetBrains Mono', 'Fira Code', ui-monospace, Menlo, monospace;
+    --font-body:'Inter', -apple-system, system-ui, sans-serif;
+    --radius:10px;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    line-height:1.65;
+    font-size:16px;
+  }
+
+  a{ color:var(--accent); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  a:focus-visible, button:focus-visible, summary:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+
+  code, pre, .mono{ font-family:var(--font-display); }
+
+  /* ---------- Layout ---------- */
+  .layout{
+    display:grid;
+    grid-template-columns:240px 1fr;
+    max-width:1180px;
+    margin:0 auto;
+  }
+
+  nav.sidebar{
+    position:sticky;
+    top:0;
+    align-self:start;
+    height:100vh;
+    overflow-y:auto;
+    padding:32px 20px;
+    border-right:1px solid var(--border);
+  }
+
+  nav.sidebar .brand{
+    font-family:var(--font-display);
+    font-size:13px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin-bottom:24px;
+  }
+
+  nav.sidebar ul{ list-style:none; }
+  nav.sidebar li{ margin-bottom:4px; }
+  nav.sidebar a{
+    display:block;
+    color:var(--muted);
+    font-size:14px;
+    padding:6px 10px;
+    border-radius:6px;
+    transition:background .15s, color .15s;
+  }
+  nav.sidebar a:hover{
+    color:var(--text);
+    background:var(--surface);
+    text-decoration:none;
+  }
+
+  main{ padding:48px 40px 120px; min-width:0; }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    padding-bottom:40px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:48px;
+  }
+  .hero .eyebrow{
+    font-family:var(--font-display);
+    font-size:13px;
+    color:var(--accent);
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    margin-bottom:14px;
+  }
+  .hero h1{
+    font-family:var(--font-display);
+    font-size:clamp(28px, 4vw, 44px);
+    font-weight:700;
+    line-height:1.15;
+    margin-bottom:14px;
+  }
+  .hero p.lead{
+    color:var(--muted);
+    max-width:640px;
+    font-size:17px;
+    margin-bottom:32px;
+  }
+
+  /* ---------- Tokenizer demo (signature element) ---------- */
+  .demo{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .demo-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 18px;
+    border-bottom:1px solid var(--border);
+    background:var(--surface-2);
+  }
+  .demo-header span{
+    font-family:var(--font-display);
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:.06em;
+  }
+  .demo-header button{
+    font-family:var(--font-display);
+    font-size:12px;
+    background:var(--accent);
+    color:#1a1006;
+    border:none;
+    padding:7px 14px;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:600;
+    letter-spacing:.04em;
+  }
+  .demo-header button:hover{ filter:brightness(1.08); }
+
+  .demo-body{ padding:18px; }
+  .demo-source{
+    font-family:var(--font-display);
+    font-size:15px;
+    color:var(--text);
+    white-space:pre-wrap;
+    word-break:break-word;
+    line-height:1.9;
+    min-height:1.9em;
+  }
+  .demo-source .tok{
+    display:inline-block;
+    padding:1px 4px;
+    margin:1px 1px;
+    border-radius:4px;
+    transition:transform .15s;
+  }
+  .demo-source .tok:hover{ transform:translateY(-1px); }
+  .tok-kw{ color:var(--kw); background:rgba(255,157,92,.12); }
+  .tok-ident{ color:var(--ident); background:rgba(110,231,214,.10); }
+  .tok-num{ color:var(--num); background:rgba(240,198,116,.10); }
+  .tok-op{ color:var(--op); background:rgba(244,135,182,.10); }
+  .tok-punc{ color:var(--punc); }
+  .tok-str{ color:var(--str); background:rgba(163,230,163,.10); }
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px 20px;
+    padding:14px 18px;
+    border-top:1px solid var(--border);
+    background:var(--surface-2);
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    color:var(--muted);
+    font-family:var(--font-display);
+  }
+  .swatch{
+    width:12px; height:12px; border-radius:3px; display:inline-block;
+  }
+
+  /* ---------- Sections ---------- */
+  section{ margin-bottom:64px; }
+  section h2{
+    font-family:var(--font-display);
+    font-size:24px;
+    margin-bottom:6px;
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+  }
+  section h2 .num{
+    color:var(--accent);
+    font-size:14px;
+  }
+  section .subtitle{
+    color:var(--muted);
+    margin-bottom:24px;
+    max-width:680px;
+  }
+  section h3{
+    font-family:var(--font-display);
+    font-size:16px;
+    margin:28px 0 10px;
+    color:var(--text);
+  }
+  section p{ margin-bottom:14px; max-width:760px; }
+  section ul{ margin:0 0 14px 22px; }
+  section li{ margin-bottom:6px; max-width:720px; }
+
+  /* ---------- Pipeline diagram ---------- */
+  .pipeline{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:0;
+    margin:28px 0;
+  }
+  .pipe-box{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px 20px;
+    min-width:140px;
+    text-align:center;
+  }
+  .pipe-box .title{
+    font-family:var(--font-display);
+    font-size:14px;
+    font-weight:700;
+    margin-bottom:4px;
+  }
+  .pipe-box .desc{ font-size:12px; color:var(--muted); }
+  .pipe-arrow{
+    color:var(--accent);
+    font-family:var(--font-display);
+    font-size:20px;
+    padding:0 12px;
+  }
+  .pipe-box.accent{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-soft); }
+  .pipe-stack{ display:flex; flex-direction:column; gap:8px; align-items:center; }
+
+  /* ---------- Tables ---------- */
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:14px 0 24px;
+    font-size:14px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  th, td{
+    text-align:left;
+    padding:10px 14px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+  }
+  th{
+    font-family:var(--font-display);
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--accent);
+    background:var(--surface-2);
+  }
+  tr:last-child td{ border-bottom:none; }
+  td code, th code{
+    background:var(--surface-2);
+    padding:2px 6px;
+    border-radius:4px;
+    font-size:13px;
+  }
+
+  /* ---------- Code blocks ---------- */
+  pre.code{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 20px;
+    overflow-x:auto;
+    font-size:13.5px;
+    line-height:1.7;
+    margin:14px 0 24px;
+    color:var(--text);
+  }
+  pre.code .c-kw{ color:var(--kw); }
+  pre.code .c-ident{ color:var(--ident); }
+  pre.code .c-nt{ color:var(--accent); }
+  pre.code .c-muted{ color:var(--muted); }
+
+  /* ---------- Tree ---------- */
+  .tree{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:20px 24px;
+    font-family:var(--font-display);
+    font-size:13.5px;
+    overflow-x:auto;
+  }
+  .tree ul{ list-style:none; margin:0; padding-left:22px; border-left:1px solid var(--border); }
+  .tree > ul{ border-left:none; padding-left:0; }
+  .tree li{ position:relative; padding:4px 0 4px 16px; }
+  .tree li::before{
+    content:"";
+    position:absolute;
+    left:0; top:0;
+    width:14px; height:18px;
+    border-left:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+    border-bottom-left-radius:4px;
+  }
+  .tree > ul > li::before{ display:none; }
+  .tree .nt{ color:var(--accent); }
+  .tree .opt{ color:var(--muted); font-style:italic; }
+
+  /* ---------- Cards / glossary ---------- */
+  .grid-2{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+    gap:16px;
+    margin:14px 0 24px;
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 20px;
+  }
+  .card h4{
+    font-family:var(--font-display);
+    font-size:14px;
+    margin-bottom:8px;
+    color:var(--accent);
+  }
+  .card p{ font-size:13.5px; color:var(--muted); margin:0; max-width:none; }
+
+  /* ---------- Trace list ---------- */
+  .trace{ list-style:none; margin:14px 0 24px; counter-reset:step; }
+  .trace li{
+    counter-increment:step;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 14px 10px 44px;
+    margin-bottom:6px;
+    position:relative;
+    font-family:var(--font-display);
+    font-size:13px;
+    max-width:none;
+  }
+  .trace li::before{
+    content:counter(step);
+    position:absolute;
+    left:12px; top:50%;
+    transform:translateY(-50%);
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--accent-soft);
+    color:var(--accent);
+    font-size:11px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700;
+  }
+
+  footer{
+    border-top:1px solid var(--border);
+    padding:24px 40px;
+    color:var(--muted);
+    font-size:13px;
+  }
+
+  /* ---------- Mobile ---------- */
+  .nav-toggle{ display:none; }
+
+  @media (max-width: 860px){
+    .layout{ grid-template-columns:1fr; }
+    nav.sidebar{
+      position:static;
+      height:auto;
+      border-right:none;
+      border-bottom:1px solid var(--border);
+      padding:16px 20px;
+    }
+    nav.sidebar ul{
+      display:none;
+      flex-direction:column;
+      margin-top:12px;
+    }
+    nav.sidebar ul.open{ display:flex; }
+    .nav-toggle{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      color:var(--text);
+      font-family:var(--font-display);
+      font-size:12px;
+      padding:8px 14px;
+      border-radius:6px;
+      cursor:pointer;
+    }
+    main{ padding:32px 20px 80px; }
+    .pipeline{ flex-direction:column; align-items:stretch; }
+    .pipe-arrow{ align-self:center; transform:rotate(90deg); padding:8px 0; }
+    .pipe-box{ min-width:0; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; scroll-behavior:auto !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <nav class="sidebar">
+    <div class="brand">MP-FR // Concepts</div>
+    <button class="nav-toggle" id="navToggle" aria-expanded="false">Sections ☰</button>
+    <ul id="navList">
+      <li><a href="#overview">Compiler Pipeline</a></li>
+      <li><a href="#bnf">BNF Notation</a></li>
+      <li><a href="#scanner">Lexical Analysis</a></li>
+      <li><a href="#symbols">Symbol Table</a></li>
+      <li><a href="#parser">Syntax Analysis</a></li>
+      <li><a href="#grammar">MP-FR Grammar Tree</a></li>
+      <li><a href="#example">Worked Example</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ul>
+  </nav>
+
+  <main>
+
+    <div class="hero">
+      <div class="eyebrow">Compilation Module — University of Guelma</div>
+      <h1>How the MP-FR Compiler Reads Your Code</h1>
+      <p class="lead">
+        This page walks through the core compiler-design concepts behind the MP-FR
+        (MiniPascal-Fr) Scanner and Parser: tokens, the symbol table, BNF grammar
+        notation, and recursive descent parsing. Click the button below to see
+        the scanner's job in action.
+      </p>
+
+      <div class="demo">
+        <div class="demo-header">
+          <span>scanner_preview.mpfr</span>
+          <button id="tokenizeBtn" type="button">Tokenize ▸</button>
+        </div>
+        <div class="demo-body">
+          <div class="demo-source" id="demoSource"></div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><span class="swatch" style="background:var(--kw)"></span> Keyword</div>
+          <div class="legend-item"><span class="swatch" style="background:var(--ident)"></span> Identifier</div>
+          <div class="legend-item"><span class="swatch" style="background:var(--num)"></span> Number</div>
+          <div class="legend-item"><span class="swatch" style="background:var(--op)"></span> Operator</div>
+          <div class="legend-item"><span class="swatch" style="background:var(--punc)"></span> Punctuation</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. PIPELINE -->
+    <section id="overview">
+      <h2><span class="num">01</span> The Compiler Pipeline</h2>
+      <p class="subtitle">
+        A compiler front-end transforms raw source text into a structured, validated
+        representation through two cooperating stages.
+      </p>
+
+      <div class="pipeline">
+        <div class="pipe-box">
+          <div class="title">Source Code</div>
+          <div class="desc">MP-FR program (.mpfr)</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-box accent">
+          <div class="title">Scanner</div>
+          <div class="desc">Lexical analysis</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-stack">
+          <div class="pipe-box">
+            <div class="title">TOKEN file</div>
+            <div class="desc">token stream</div>
+          </div>
+          <div class="pipe-box">
+            <div class="title">Symbol table</div>
+            <div class="desc">+ lexical errors</div>
+          </div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-box accent">
+          <div class="title">Parser</div>
+          <div class="desc">Syntax analysis</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-box">
+          <div class="title">RULE file</div>
+          <div class="desc">+ syntax errors</div>
+        </div>
+      </div>
+
+      <p>
+        The <strong>Scanner</strong> never looks at grammar rules — it only groups
+        characters into the smallest meaningful units, called <em>tokens</em>.
+        The <strong>Parser</strong> never looks at individual characters — it
+        consumes the token stream and checks whether it matches the structure
+        defined by the language's grammar.
+      </p>
+    </section>
+
+    <!-- 2. BNF -->
+    <section id="bnf">
+      <h2><span class="num">02</span> BNF Notation</h2>
+      <p class="subtitle">
+        Backus Normal Form (BNF) is the formal notation used to describe the MP-FR
+        grammar. Every rule defines a non-terminal in terms of terminals and other
+        non-terminals.
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>Notation</th><th>Meaning</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>::=</code></td><td>"is defined as"</td><td><code>&lt;NomType&gt; ::= entier</code></td></tr>
+          <tr><td><code>&lt;Nom&gt;</code></td><td>Non-terminal — a symbol expanded by another rule</td><td><code>&lt;NomVariable&gt;</code></td></tr>
+          <tr><td>lowercase word</td><td>Terminal — a literal keyword that appears as-is in source code</td><td><code>debut</code>, <code>fin</code>, <code>si</code></td></tr>
+          <tr><td><code>a b</code></td><td>Concatenation — <code>a</code> followed by <code>b</code></td><td><code>si &lt;Expression&gt; alors</code></td></tr>
+          <tr><td><code>a / b</code></td><td>Choice — either <code>a</code> or <code>b</code></td><td><code>entier | reel</code></td></tr>
+          <tr><td><code>[a]</code></td><td>Option — zero or one occurrence</td><td><code>[sinon &lt;Instruction&gt;]</code></td></tr>
+          <tr><td><code>{a}</code> or <code>a*</code></td><td>Repetition — zero or more occurrences</td><td><code>{; &lt;Instruction&gt;}</code></td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        Reading a rule like
+        <code>&lt;DéfinitionConstante&gt; ::= &lt;NomConstante&gt; = &lt;Constante&gt; ;</code>
+        tells the parser exactly what sequence of tokens to expect: an identifier,
+        then the literal <code>=</code>, then a constant, then a semicolon.
+      </p>
+    </section>
+
+    <!-- 3. SCANNER -->
+    <section id="scanner">
+      <h2><span class="num">03</span> Lexical Analysis (Scanner)</h2>
+      <p class="subtitle">
+        The scanner reads the source file character by character and groups
+        characters into <strong>tokens</strong> — the smallest units that carry meaning.
+      </p>
+
+      <h3>Token categories in MP-FR</h3>
+      <div class="grid-2">
+        <div class="card">
+          <h4>Keywords</h4>
+          <p>Reserved French words with fixed meaning: <code>programme</code>, <code>debut</code>, <code>fin</code>, <code>si</code>, <code>alors</code>, <code>sinon</code>, <code>tantque</code>, <code>pour</code>, <code>repeter</code>, <code>jusqu'a</code>, <code>entier</code>, <code>reel</code>, <code>et</code>, <code>ou</code>, <code>div</code>, <code>mod</code>.</p>
+        </div>
+        <div class="card">
+          <h4>Identifiers</h4>
+          <p>Names for variables, constants, and the program itself. Defined by <code>&lt;Nom&gt; ::= &lt;Lettre&gt; &lt;Chiffre&gt; {&lt;Lettre&gt; | &lt;Chiffre&gt;}</code> — a letter/digit pair followed by any mix of letters and digits.</p>
+        </div>
+        <div class="card">
+          <h4>Numbers</h4>
+          <p>Integer literals (<code>123</code>) or decimal literals (<code>3.14</code>), matched by the <code>&lt;Nombre&gt;</code> rule.</p>
+        </div>
+        <div class="card">
+          <h4>Operators &amp; punctuation</h4>
+          <p>Assignment <code>:=</code>, relational operators (<code>=</code>, <code>&lt;&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>...), arithmetic operators (<code>+ - * div mod</code>), and separators like <code>; , : .</code></p>
+        </div>
+      </div>
+
+      <h3>What the scanner produces</h3>
+      <ul>
+        <li><strong>TOKEN file</strong> — every token in order, tagged with its category (e.g. <code>KEYWORD(programme)</code>, <code>IDENT(x)</code>, <code>NUM(5)</code>, <code>OP(:=)</code>).</li>
+        <li><strong>Symbol table</strong> — every identifier the scanner has seen, used later for type checking and to detect undeclared variables.</li>
+        <li><strong>Lexical errors</strong> — characters or sequences that don't form a valid token (e.g. an unterminated identifier, an invalid number format, or an unrecognized symbol).</li>
+      </ul>
+    </section>
+
+    <!-- 4. SYMBOL TABLE -->
+    <section id="symbols">
+      <h2><span class="num">04</span> The Symbol Table</h2>
+      <p class="subtitle">
+        A running record of every identifier the scanner has encountered, along
+        with metadata used by later compilation stages.
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Kind</th><th>Type</th><th>First seen</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Exemple</code></td><td>Program name</td><td>—</td><td>line 1</td></tr>
+          <tr><td><code>x</code></td><td>Variable</td><td>entier</td><td>line 3</td></tr>
+          <tr><td><code>y</code></td><td>Variable</td><td>entier</td><td>line 3</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        Each time the scanner meets a name it hasn't seen before, it inserts a
+        new entry. If the same name appears again, the scanner reuses the
+        existing entry instead of duplicating it — this is how the parser later
+        knows whether a variable was actually declared.
+      </p>
+    </section>
+
+    <!-- 5. PARSER -->
+    <section id="parser">
+      <h2><span class="num">05</span> Syntax Analysis (Recursive Descent Parser)</h2>
+      <p class="subtitle">
+        The parser consumes the token stream produced by the scanner and checks
+        it against the MP-FR grammar, one rule at a time.
+      </p>
+
+      <h3>How recursive descent works</h3>
+      <p>
+        Each non-terminal in the grammar becomes a function in the parser. A
+        function for <code>&lt;Instruction&gt;</code> looks at the current token
+        to decide which alternative to try (<code>si</code> → call the function
+        for <code>&lt;InstructionSi&gt;</code>, <code>tantque</code> → call the
+        function for <code>&lt;InstructionTantque&gt;</code>, an identifier →
+        call the function for <code>&lt;InstructionAffectation&gt;</code>, and so on).
+        Each function may call other functions, mirroring the structure of the grammar —
+        hence "recursive descent": the parser descends through the grammar tree,
+        recursively, following the shape of the program.
+      </p>
+
+      <h3>What the parser produces</h3>
+      <ul>
+        <li><strong>RULE file</strong> — the ordered list of grammar rules applied while parsing, forming a derivation of the program.</li>
+        <li><strong>Syntax errors</strong> — reported when the current token doesn't match what the active rule expects (e.g. <code>alors</code> missing after a condition, or a missing <code>;</code> between statements).</li>
+      </ul>
+
+      <h3>Expression precedence</h3>
+      <p>
+        MP-FR expressions are layered so that operator precedence falls out of
+        the grammar structure itself, without needing extra logic:
+      </p>
+      <pre class="code"><span class="c-nt">&lt;Expression&gt;</span>       → comparisons (<span class="c-kw">=  &lt;&gt;  &lt;  &gt;  &lt;=  &gt;=</span>)
+  └─ <span class="c-nt">&lt;ExpressionSimple&gt;</span> → addition / subtraction / <span class="c-kw">ou</span>
+       └─ <span class="c-nt">&lt;Terme&gt;</span>          → multiplication / <span class="c-kw">div mod et</span>
+            └─ <span class="c-nt">&lt;Facteur&gt;</span>     → constants, variables, ( <span class="c-nt">&lt;Expression&gt;</span> )</pre>
+
+      <p>
+        Because each level can only be reached <em>through</em> the level above it,
+        <code>*</code> always binds tighter than <code>+</code>, which always binds
+        tighter than a comparison — exactly the precedence rules of ordinary arithmetic.
+      </p>
+    </section>
+
+    <!-- 6. GRAMMAR TREE -->
+    <section id="grammar">
+      <h2><span class="num">06</span> MP-FR Grammar Tree</h2>
+      <p class="subtitle">
+        A simplified view of how a full MP-FR program decomposes into its grammar
+        rules, from the program declaration down to individual instructions.
+      </p>
+
+      <div class="tree">
+        <ul>
+          <li><span class="nt">ProgrammePascal</span>
+            <ul>
+              <li>programme <span class="nt">NomProgramme</span> ;</li>
+              <li><span class="nt">Corps</span>
+                <ul>
+                  <li><span class="nt">PartieDéfinitionConstante</span> <span class="opt">(optional)</span>
+                    <ul>
+                      <li><span class="nt">DéfinitionConstante</span> → NomConstante = Constante ;</li>
+                    </ul>
+                  </li>
+                  <li><span class="nt">PartieDéfinitionVariable</span> <span class="opt">(optional)</span>
+                    <ul>
+                      <li><span class="nt">DéfinitionVariable</span> → <span class="nt">GroupeVariable</span> ;
+                        <ul>
+                          <li><span class="nt">GroupeVariable</span> → NomVariable {, NomVariable} : NomType</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li><span class="nt">InstrComp</span> <span class="opt">(required)</span>
+                    <ul>
+                      <li>debut</li>
+                      <li><span class="nt">Instruction</span> {; <span class="nt">Instruction</span>}
+                        <ul>
+                          <li>InstructionAffectation</li>
+                          <li>InstructionSi</li>
+                          <li>InstructionTantque</li>
+                          <li>InstructionRepeter</li>
+                          <li>InstructionPour</li>
+                          <li>Vide</li>
+                        </ul>
+                      </li>
+                      <li>fin</li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>.</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 7. WORKED EXAMPLE -->
+    <section id="example">
+      <h2><span class="num">07</span> Worked Example</h2>
+      <p class="subtitle">
+        Tracing a small MP-FR program through the scanner and parser.
+      </p>
+
+      <h3>Source program</h3>
+      <pre class="code"><span class="c-kw">programme</span> <span class="c-ident">Exemple</span> ;
+<span class="c-kw">variable</span>
+   <span class="c-ident">x</span>, <span class="c-ident">y</span> : <span class="c-kw">entier</span> ;
+<span class="c-kw">debut</span>
+   <span class="c-ident">x</span> := 5 ;
+   <span class="c-kw">si</span> <span class="c-ident">x</span> &lt;= 10 <span class="c-kw">alors</span>
+      <span class="c-ident">y</span> := <span class="c-ident">x</span> + 1
+   <span class="c-kw">sinon</span>
+      <span class="c-ident">y</span> := <span class="c-ident">x</span> - 1
+<span class="c-kw">fin</span> .</pre>
+
+      <h3>Token stream (excerpt)</h3>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Lexeme</th><th>Category</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td><code>programme</code></td><td>Keyword</td></tr>
+          <tr><td>2</td><td><code>Exemple</code></td><td>Identifier</td></tr>
+          <tr><td>3</td><td><code>;</code></td><td>Punctuation</td></tr>
+          <tr><td>4</td><td><code>variable</code></td><td>Keyword</td></tr>
+          <tr><td>5</td><td><code>x</code></td><td>Identifier</td></tr>
+          <tr><td>6</td><td><code>,</code></td><td>Punctuation</td></tr>
+          <tr><td>7</td><td><code>y</code></td><td>Identifier</td></tr>
+          <tr><td>8</td><td><code>:</code></td><td>Punctuation</td></tr>
+          <tr><td>9</td><td><code>entier</code></td><td>Keyword</td></tr>
+          <tr><td>10</td><td><code>;</code></td><td>Punctuation</td></tr>
+          <tr><td>…</td><td>…</td><td>…</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Grammar rules applied (excerpt)</h3>
+      <ol class="trace">
+        <li>ProgrammePascal → programme NomProgramme ; Corps .</li>
+        <li>Corps → PartieDéfinitionVariable InstrComp</li>
+        <li>PartieDéfinitionVariable → variable DéfinitionVariable</li>
+        <li>DéfinitionVariable → GroupeVariable ;</li>
+        <li>GroupeVariable → NomVariable , NomVariable : NomType</li>
+        <li>InstrComp → debut Instruction { ; Instruction } fin</li>
+        <li>Instruction → InstructionAffectation (x := 5)</li>
+        <li>Instruction → InstructionSi</li>
+        <li>InstructionSi → si Expression alors Instruction sinon Instruction</li>
+        <li>Expression → ExpressionSimple OperateurRelationnel ExpressionSimple (x &lt;= 10)</li>
+      </ol>
+    </section>
+
+    <!-- 8. GLOSSARY -->
+    <section id="glossary">
+      <h2><span class="num">08</span> Glossary</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h4>Token</h4>
+          <p>A categorized chunk of source text — the output unit of the scanner (e.g. keyword, identifier, number, operator).</p>
+        </div>
+        <div class="card">
+          <h4>Lexeme</h4>
+          <p>The actual text matched for a token, e.g. the lexeme <code>x</code> for an identifier token.</p>
+        </div>
+        <div class="card">
+          <h4>Non-terminal</h4>
+          <p>A grammar symbol that expands into other symbols, written <code>&lt;LikeThis&gt;</code>.</p>
+        </div>
+        <div class="card">
+          <h4>Terminal</h4>
+          <p>A literal symbol that appears directly in the source code and cannot be expanded further (keywords, punctuation).</p>
+        </div>
+        <div class="card">
+          <h4>Derivation</h4>
+          <p>A sequence of grammar rule applications that transforms the start symbol into the actual program text.</p>
+        </div>
+        <div class="card">
+          <h4>Recursive descent</h4>
+          <p>A top-down parsing technique where each grammar rule is implemented as a function that may call other rule-functions.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  MP-FR Compiler — Compilation Module, University of Guelma, 2025/2026.
+</footer>
+
+<script>
+  // Mobile nav toggle
+  const navToggle = document.getElementById('navToggle');
+  const navList = document.getElementById('navList');
+  navToggle.addEventListener('click', () => {
+    const open = navList.classList.toggle('open');
+    navToggle.setAttribute('aria-expanded', open);
+  });
+
+  // --- Tiny MP-FR tokenizer for the hero demo ---
+  const KEYWORDS = new Set([
+    'programme','constante','variable','debut','fin','entier','reel',
+    'si','alors','sinon','tantque','faire','repeter',"jusqu'a",
+    'pour','allant','de','a','pas','et','ou','div','mod'
+  ]);
+
+  const sampleCode = "si x <= 10 alors\n   y := x + 1\nsinon\n   y := x - 1 ;";
+
+  function tokenize(src){
+    const tokens = [];
+    const re = /\s+|:=|<=|>=|<>|[A-Za-zÀ-ÿ][A-Za-z0-9À-ÿ]*|[0-9]+(\.[0-9]+)?|./g;
+    let m;
+    while ((m = re.exec(src)) !== null){
+      const t = m[0];
+      if (/^\s+$/.test(t)) { tokens.push({text:t, type:'space'}); continue; }
+      if (KEYWORDS.has(t)) { tokens.push({text:t, type:'kw'}); continue; }
+      if (/^[A-Za-zÀ-ÿ][A-Za-z0-9À-ÿ]*$/.test(t)) { tokens.push({text:t, type:'ident'}); continue; }
+      if (/^[0-9]+(\.[0-9]+)?$/.test(t)) { tokens.push({text:t, type:'num'}); continue; }
+      if (/^(:=|<=|>=|<>|[+\-*=<>])$/.test(t)) { tokens.push({text:t, type:'op'}); continue; }
+      tokens.push({text:t, type:'punc'});
+    }
+    return tokens;
+  }
+
+  function render(tokens){
+    const container = document.getElementById('demoSource');
+    container.innerHTML = '';
+    tokens.forEach(tok => {
+      if (tok.type === 'space'){
+        container.appendChild(document.createTextNode(tok.text));
+        return;
+      }
+      const span = document.createElement('span');
+      span.className = 'tok tok-' + tok.type;
+      span.textContent = tok.text;
+      span.title = tok.type.toUpperCase();
+      container.appendChild(span);
+    });
+  }
+
+  // Initial plain render
+  document.getElementById('demoSource').textContent = sampleCode;
+
+  document.getElementById('tokenizeBtn').addEventListener('click', () => {
+    render(tokenize(sampleCode));
+  });
+</script>
+
+</body>
+</html>
