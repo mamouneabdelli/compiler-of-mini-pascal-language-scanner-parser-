@@ -2,9 +2,7 @@
 
 A compiler front-end (Scanner + Recursive Descent Parser) for **MiniPascal-Fr (MP-FR)**, a French-keyword Pascal-like teaching language, built as part of the Compilation module.
 
-> 3rd Year Computer Science Engineer — AI Track
-> University of Guelma — Department of Computer Science
-> Academic Year: 2025/2026
+
 
 ---
 
