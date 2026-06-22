@@ -234,10 +234,9 @@ pip install -r requirements.txt
 
 ## Resources
 
-- Compiler automaton diagram (Canva): [View diagram](https://www.canva.com/design/DAG44BUfoWg/HvfaCRAOjUZe00ziCnMSjg/view)
+- Compiler automaton design  (Canva): [View diagram](https://www.canva.com/design/DAG44BUfoWg/HvfaCRAOjUZe00ziCnMSjg/view)
+- N.B:This automaton read all types of jetons , and also applicate all the rules 
 
 ---
 
-## License
 
-This project was developed for academic purposes as part of the Compilation module at the University of Guelma.
